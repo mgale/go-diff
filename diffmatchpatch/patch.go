@@ -70,6 +70,59 @@ func (p *Patch) String() string {
 	return unescaper.Replace(text.String())
 }
 
+// StringByLine tries to provide a patch string output that
+// matches up with diff by line functionality
+// https://github.com/google/diff-match-patch/wiki/Line-or-Word-Diffs
+func (p *Patch) StringByLine() string {
+	var coords1, coords2 string
+
+	if p.Length1 == 0 {
+		coords1 = strconv.Itoa(p.Start1) + ",0"
+	} else if p.Length1 == 1 {
+		coords1 = strconv.Itoa(p.Start1 + 1)
+	} else {
+		coords1 = strconv.Itoa(p.Start1+1) + "," + strconv.Itoa(p.Length1)
+	}
+
+	if p.Length2 == 0 {
+		coords2 = strconv.Itoa(p.Start2) + ",0"
+	} else if p.Length2 == 1 {
+		coords2 = strconv.Itoa(p.Start2 + 1)
+	} else {
+		coords2 = strconv.Itoa(p.Start2+1) + "," + strconv.Itoa(p.Length2)
+	}
+
+	var text bytes.Buffer
+	_, _ = text.WriteString("@@ -" + coords1 + " +" + coords2 + " @@\n")
+
+	// Escape the body of the patch with %xx notation.
+	for _, aDiff := range p.diffs {
+		lines := splitLines(aDiff.Text)
+
+		switch aDiff.Type {
+		case DiffInsert:
+			for _, line := range lines {
+				_, _ = text.WriteString("+")
+				_, _ = text.WriteString(line)
+				_, _ = text.WriteString("\n")
+			}
+		case DiffDelete:
+			for _, line := range lines {
+				_, _ = text.WriteString("-")
+				_, _ = text.WriteString(line)
+				_, _ = text.WriteString("\n")
+			}
+		case DiffEqual:
+			_, _ = text.WriteString("")
+		}
+
+		//_, _ = text.WriteString(strings.Replace(url.QueryEscape(aDiff.Text), "+", " ", -1))
+		//_, _ = text.WriteString("\n")
+	}
+
+	return unescaper.Replace(text.String())
+}
+
 // PatchAddContext increases the context until it is unique, but doesn't let the pattern expand beyond MatchMaxBits.
 func (dmp *DiffMatchPatch) PatchAddContext(patch Patch, text string) Patch {
 	if len(text) == 0 {

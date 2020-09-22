@@ -9,6 +9,7 @@
 package diffmatchpatch
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -1196,6 +1197,43 @@ func (dmp *DiffMatchPatch) DiffPrettyText(diffs []Diff) string {
 			_, _ = buff.WriteString("\x1b[0m")
 		case DiffEqual:
 			_, _ = buff.WriteString(text)
+		}
+	}
+
+	return buff.String()
+}
+
+func splitLines(s string) []string {
+	var lines []string
+	sc := bufio.NewScanner(strings.NewReader(s))
+	for sc.Scan() {
+		lines = append(lines, sc.Text())
+	}
+	return lines
+}
+
+// DiffPrettyTextByLine converts a []Diff into a colored text report.
+func (dmp *DiffMatchPatch) DiffPrettyTextByLine(diffs []Diff) string {
+	var buff bytes.Buffer
+	for _, diff := range diffs {
+		text := diff.Text
+		lines := splitLines(text)
+
+		switch diff.Type {
+		case DiffInsert:
+			for _, line := range lines {
+				_, _ = buff.WriteString("+")
+				_, _ = buff.WriteString(line)
+				_, _ = buff.WriteString("\n")
+			}
+		case DiffDelete:
+			for _, line := range lines {
+				_, _ = buff.WriteString("-")
+				_, _ = buff.WriteString(line)
+				_, _ = buff.WriteString("\n")
+			}
+		case DiffEqual:
+			_, _ = buff.WriteString("---\n")
 		}
 	}
 
